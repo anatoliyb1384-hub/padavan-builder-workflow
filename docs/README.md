@@ -1,4 +1,4 @@
-## D-Link DIR-300 B3 WAN LED Fix
+## Padavan-ng D-Link DIR-300 B3 WAN LED Fix
 
 For revision **B3**, the vendor changed the GPIO wiring for the LEDs compared to revisions B1/B2. Because of this, after flashing with the original padavan-ng firmware, the WAN LED does not work properly, and the Power LED stays amber instead of turning green after boot.
 
