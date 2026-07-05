@@ -1,43 +1,40 @@
-## D-Link DIR-300 B3 WAN led fix
+## D-Link DIR-300 B3 WAN LED Fix
 
-For revision **B3**, vendor changed the GPIO wiring for the LEDs compared to revisions B1/B2. Because of this, after flashing with the original padavan-ng, WAN led does not work, and the Power LED will stay always amber instead of green after boot.
+For revision **B3**, the vendor changed the GPIO wiring for the LEDs compared to revisions B1/B2. Because of this, after flashing with the original padavan-ng firmware, the WAN LED does not work properly, and the Power LED stays amber instead of turning green after boot.
 
-I was able to find correct gpio for B3 board
+I was able to find the correct GPIO mappings for the B3 board:
 
-#### Power led:
-```
-- mtk_gpio -w 9 1 - POWER led OFF
-- mtk_gpio -w 9 0 - POWER led on GREEN
-- mtk_gpio -w 8 1 - POWER led COLOR GREEN
-- mtk_gpio -w 8 0 - POWER led COLOR AMBER
-```
+#### Power LED:
+* `mtk_gpio -w 9 1` — Power LED OFF
+* `mtk_gpio -w 9 0` — Power LED ON (Enable)
+* `mtk_gpio -w 8 1` — Power LED color: GREEN
+* `mtk_gpio -w 8 0` — Power LED color: AMBER
 
-#### WAN led:
-```
-- mtk_gpio -w 12 1 - WAN led OFF
-- mtk_gpio -w 12 0 - WAN led on GREEN
-- mtk_gpio -w 14 1 - WAN led COLOR GREEN
-- mtk_gpio -w 14 0 - WAN led COLOR ANBER
-```
+#### WAN LED:
+* `mtk_gpio -w 12 1` — WAN LED OFF
+* `mtk_gpio -w 12 0` — WAN LED ON (Enable)
+* `mtk_gpio -w 14 1` — WAN LED color: GREEN
+* `mtk_gpio -w 14 0` — WAN LED color: AMBER
 
 ### Solution:
-Add support for MediaTek low-level utilities to the build config:
+Add support for MediaTek low-level utilities to your build config:
+```ini
+CONFIG_FIRMWARE_INCLUDE_GPIO=y
+CONFIG_FIRMWARE_INCLUDE_GPIO_UTILS=y
 ```
-- CONFIG_FIRMWARE_INCLUDE_GPIO=y
-- CONFIG_FIRMWARE_INCLUDE_GPIO_UTILS=y
-```
+Remove any additional locales to preserve flash space, as the build might fail due to strict partition size limits if any extra languages are included.
 
-Remove any additional locales to preserve flash space (original config build will fail while include any one of them)
+You can use [`dir300_b3_wan-led-fix_build.config`](../dir300_b3_wan-led-fix_build.config) as a reference configuration for your GitHub Actions build workflow described below.
 
-Or use [`dir300_b3_wan-led-fix_build.config`](../dir300_b3_wan-led-fix_build.config) as reference for github build steps below, build firmware and install it to your device.
+Flash the firmware and enable SSH access via WebUI (Advanced Settings -> Services -> Enable SSH server). Log in via SSH and verify that the mtk_gpio utility works by testing any of the LED commands above.
 
-Enable ssh access via webui (Advanced Settings -> Services -> Enable SSH server), login via ssh and check mtk_gpio is in place, you may use any of led commands above. If you see it works then proceed with (Advanced Settings -> Scripts -> Run After Router Started) and add next:
+Once verified, navigate to Advanced Settings -> Scripts -> Run After Router Started in the WebUI and append the following script:
 
 ```
 # Make power led green after boot
 mtk_gpio -w 8 1
 
-# Enable WAN LED and set it's color ORANGE after bootup
+# Enable WAN LED and set it's color AMBER after bootup
 mtk_gpio -w 12 0
 mtk_gpio -w 14 0
 
@@ -48,7 +45,7 @@ while true; do
         # internet ok -> make wan led green
         mtk_gpio -w 14 1
     else
-        # internet issue -> make wan led orange
+        # internet issue -> make wan led amber
         mtk_gpio -w 14 0
     fi
     sleep 10
@@ -56,10 +53,10 @@ done
 ) &
 ```
 
-These steps will make the LED behavior the same as in the vendor firmware, traffic blinking also works
-- GREEN power led after system bootup
-- GREEN means internet connection is ok
-- AMBER - there are issues with internet access
+This workaround restores the intended factory LED behavior, and hardware traffic blinking on the WAN port remains fully functional:
+- GREEN Power LED after system bootup.
+- GREEN WAN LED means internet connection is active and stable.
+- AMBER WAN LED means there are issues with internet access (ping failed).
 
 
 
