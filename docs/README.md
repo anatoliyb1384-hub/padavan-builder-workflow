@@ -1,4 +1,67 @@
-<p align="right">English | <a href="ru#readme">Русский</a></p>
+## D-Link DIR-300 B3 WAN led fix
+
+For revision **B3**, vendor changed the GPIO wiring for the LEDs compared to revisions B1/B2. Because of this, after flashing with the original padavan-ng, WAN led does not work, and the Power LED will stay always amber instead of green after boot.
+
+I was able to find correct gpio for B3 board
+
+#### Power led:
+```
+- mtk_gpio -w 9 1 - POWER led OFF
+- mtk_gpio -w 9 0 - POWER led on GREEN
+- mtk_gpio -w 8 1 - POWER led COLOR GREEN
+- mtk_gpio -w 8 0 - POWER led COLOR AMBER
+```
+
+#### WAN led:
+```
+- mtk_gpio -w 12 1 - WAN led OFF
+- mtk_gpio -w 12 0 - WAN led on GREEN
+- mtk_gpio -w 14 1 - WAN led COLOR GREEN
+- mtk_gpio -w 14 0 - WAN led COLOR ANBER
+```
+
+### Solution:
+Add support for MediaTek low-level utilities to the build config:
+```
+- CONFIG_FIRMWARE_INCLUDE_GPIO=y
+- CONFIG_FIRMWARE_INCLUDE_GPIO_UTILS=y
+```
+
+Remove any additional locales to preserve flash space (original config build will fail while include any one of them)
+
+Or use [`dir300_b3_wan-led-fix_build.config`](../dir300_b3_wan-led-fix_build.config) as reference for github build steps below, build firmware and install it to your device.
+
+Enable ssh access via webui (Advanced Settings -> Services -> Enable SSH server), login via ssh and check mtk_gpio is in place, you may use any of led commands above. If you see it works then proceed with (Advanced Settings -> Scripts -> Run After Router Started) and add next:
+
+```
+# Make power led green after boot
+mtk_gpio -w 8 1
+
+# Enable WAN LED and set it's color ORANGE after bootup
+mtk_gpio -w 12 0
+mtk_gpio -w 14 0
+
+# Check ISP connection and set WAN led green if internet is alive
+(
+while true; do
+    if ping -c 1 -W 2 1.1.1.1 > /dev/null 2>&1; then
+        # internet ok -> make wan led green
+        mtk_gpio -w 14 1
+    else
+        # internet issue -> make wan led orange
+        mtk_gpio -w 14 0
+    fi
+    sleep 10
+done
+) &
+```
+
+These steps will make the LED behavior the same as in the vendor firmware, traffic blinking also works
+- GREEN power led after system bootup
+- GREEN means internet connection is ok
+- AMBER - there are issues with internet access
+
+
 
 ## Automatic Padavan firmware builds using GitHub servers
 
